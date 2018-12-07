@@ -1,58 +1,69 @@
 import React, { Component } from 'react';
-import eventbrite from 'brite-rest';
-
-console.log(process.env);
-const token = process.env.REACT_APP_EB_OAUTH_TOKEN;
-const sdk = eventbrite({
-  token,
-});
-const fetchJson = (url, options) =>
-  fetch(url, options).then(resp => resp.json());
+import eventbrite from 'eventbrite';
 
 class App extends Component {
   state = {
-    events: [],
+    token: process.env.REACT_APP_EB_OAUTH_TOKEN,
+    orders: [],
   };
 
-  componentDidMount() {
-    // sdk.request('/events/search/?q=codeworking')
-    fetchJson(
-      'https://www.eventbriteapi.com/v3/events/search/?user.id=182250358318',
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        // credentials: 'same-origin', // works, also nothing works but I think same-origin is default
-        // credentials: 'include', // don't work
-        /*
-          error message:
-          Failed to load https://www.eventbriteapi.com/v3/events/search/?user.id=182250358318:
-          Response to preflight request doesn't pass access control check: The value of the
-          'Access-Control-Allow-Origin' header in the response must not be the wildcard '*' when
-          the request's credentials mode is 'include'. Origin 'http://localhost:3000' is
-          therefore not allowed access.
-        */
-      }
-    ).then(resp => {
+  requestOrders = () => {
+    const {token, timeFilter} = this.state;
+    if (!token) {
+      return;
+    }
+    const sdk = eventbrite({
+      token,
+    });
+    sdk.request(`/users/me/orders/?time_filter=${timeFilter}`).then(resp => {
       this.setState({
-        events: resp.events,
+        orders: resp.orders,
         total: resp.pagination.object_count,
       });
     });
   }
 
+  componentDidMount() {
+    this.requestOrders();
+  }
+
+  handleStateUpdate = (evt) => {
+    const {name, value} = evt.target;
+    this.setState({[name]: value}, this.requestOrders);
+  }
+
   render() {
+    const {timeFilter, token} = this.state;
     return (
       <div className="App">
         <table>
           <tbody>
             <tr>
-              <td>Current State Events Count:</td>
-              <td>{this.state.events.length}</td>
+              <td>Orders in state:</td>
+              <td>{this.state.orders.length}</td>
             </tr>
             <tr>
-              <td>Total Events Count:</td>
+              <td>Total Count:</td>
               <td>{this.state.total}</td>
+            </tr>
+            <tr>
+              <td>Time Filter</td>
+              <td>
+                <select name="timeFilter" value={timeFilter} onChange={this.handleStateUpdate}>
+                  <option value="">---------</option>
+                  <option value="all">
+                    all
+                  </option>
+                  <option value="past">past</option>
+                  <option value="current_future">current_future</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td>Token</td>
+              <td>
+                <input name="token" value={token} onChange={this.handleStateUpdate} />
+              </td>
             </tr>
           </tbody>
         </table>
